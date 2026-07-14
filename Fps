@@ -1,179 +1,131 @@
 -- =============================================
--- SCRIPT FPS OPTIMIZER + VLEXHUB
--- UI HITAM EDISI PREMIUM
--- VERSI TERBARU 2026
+-- SCRIPT FPS BOOST + LAYAR GEPENG + ANTI BAND
+-- MODE DARURAT KALO UI PERTAMA GAGAL
 -- =============================================
+print("🔥 VLEXHUB FPS BOOST + ANTI BAND AKTIF!")
 
-print("🔥 SCRIPT VLEXHUB FPS OPTIMIZER AKTIF!")
-
--- TUNGGU SAMPE SIAP
 repeat task.wait() until game:IsLoaded()
 repeat task.wait() until game:GetService("Players").LocalPlayer
 task.wait(2)
 
+local player = game:GetService("Players").LocalPlayer
 local Lighting = game:GetService("Lighting")
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
+local StarterGui = game:GetService("StarterGui")
 local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
-
-local player = Players.LocalPlayer
-local playerGui = (gethui and gethui()) or game:GetService("CoreGui")
+local Camera = game:GetService("Workspace").CurrentCamera
 
 -- =====================
--- STATE
+-- VARIABEL
 -- =====================
-local settings = {
-    removePostEffects   = true,
-    disableShadows      = true,
-    flatMaterials       = true,
-    hideDecals          = true,
-    flatTerrain         = true,
-    qualityLevel        = 1,
-    physicsSleep        = true,
-}
-
-local originalData = {
-    effects = {},
-    parts   = {},
-    decals  = {},
-    terrain = {},
-}
+local masterEnabled = false
+local flatScreenEnabled = false
+local originalFOV = Camera.FieldOfView
+local UI_MODE = "NORMAL" -- NORMAL / DARURAT
 
 -- =====================
--- FUNCTIONS
+-- FUNGSI LAYAR GEPENG
 -- =====================
-local function applyPostEffects(enabled)
-    if enabled then
-        for _, v in ipairs(Lighting:GetChildren()) do
-            if v:IsA("PostEffect") then
+local function ApplyFlatScreen()
+    Camera.FieldOfView = 1
+    print("🔥 LAYAR GEPENG AKTIF!")
+end
+
+local function RemoveFlatScreen()
+    Camera.FieldOfView = originalFOV or 70
+    print("⛔ LAYAR GEPENG DIMATIKAN!")
+end
+
+-- =====================
+-- FUNGSI FPS BOOST
+-- =====================
+local function ApplyBoost()
+    settings().Rendering.QualityLevel = 1
+    settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04
+    Lighting.GlobalShadows = false
+    Lighting.ShadowSoftness = 0
+    Lighting.FogEnd = 9e9
+    Lighting.FogStart = 9e9
+    Lighting.Brightness = 2
+    Lighting.Atmosphere = nil
+    
+    local terrain = Workspace:FindFirstChildOfClass("Terrain")
+    if terrain then
+        terrain.WaterWaveSize = 0
+        terrain.WaterWaveSpeed = 0
+        terrain.WaterReflectance = 0
+        terrain.WaterTransparency = 1
+    end
+    
+    for _, v in pairs(Workspace:GetDescendants()) do
+        pcall(function()
+            if v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("SunRaysEffect") then
+                v.Enabled = false
                 v:Destroy()
             end
-        end
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd        = 9e9
-        Lighting.Brightness    = 2
-    else
-        Lighting.GlobalShadows = true
-        Lighting.FogEnd        = 10000
-        Lighting.Brightness    = 1
-    end
-end
-
-local function applyMaterials(enabled)
-    for _, instance in ipairs(Workspace:GetDescendants()) do
-        if instance:IsA("BasePart") then
-            if player.Character and instance:IsDescendantOf(player.Character) then continue end
-            if enabled then
-                originalData.parts[instance] = {
-                    Material    = instance.Material,
-                    Reflectance = instance.Reflectance,
-                }
-                instance.Material    = Enum.Material.SmoothPlastic
-                instance.Reflectance = 0
-            else
-                if originalData.parts[instance] then
-                    instance.Material    = originalData.parts[instance].Material
-                    instance.Reflectance = originalData.parts[instance].Reflectance
-                end
+            if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
+                v.Enabled = false
+                v:Destroy()
             end
-        end
-    end
-end
-
-local function applyDecals(enabled)
-    for _, instance in ipairs(Workspace:GetDescendants()) do
-        if instance:IsA("Texture") or instance:IsA("Decal") then
-            if player.Character and instance:IsDescendantOf(player.Character) then continue end
-            if enabled then
-                originalData.decals[instance] = instance.Transparency
-                instance.Transparency = 1
-            else
-                if originalData.decals[instance] then
-                    instance.Transparency = originalData.decals[instance]
-                end
+            if v:IsA("Atmosphere") then
+                v:Destroy()
             end
-        end
+            if v:IsA("Decal") or v:IsA("Texture") then
+                v.Transparency = 1
+            end
+        end)
     end
-end
-
-local function applyTerrain(enabled)
-    local terrain = Workspace:FindFirstChild("Terrain")
-    if not terrain then return end
-    if enabled then
-        originalData.terrain = {
-            WaterWaveSize       = terrain.WaterWaveSize,
-            WaterWaveSpeed      = terrain.WaterWaveSpeed,
-            WaterReflectance    = terrain.WaterReflectance,
-            WaterTransparency   = terrain.WaterTransparency,
-        }
-        terrain.WaterWaveSize     = 0
-        terrain.WaterWaveSpeed    = 0
-        terrain.WaterReflectance  = 0
-        terrain.WaterTransparency = 1
-    else
-        if originalData.terrain.WaterWaveSize then
-            terrain.WaterWaveSize     = originalData.terrain.WaterWaveSize
-            terrain.WaterWaveSpeed    = originalData.terrain.WaterWaveSpeed
-            terrain.WaterReflectance  = originalData.terrain.WaterReflectance
-            terrain.WaterTransparency = originalData.terrain.WaterTransparency
-        end
-    end
-end
-
-local function applyQuality(level)
+    
     pcall(function()
-        UserSettings().GameSettings.SavedQualityLevel = Enum.SavedQualitySetting.QualityLevel1
-        settings().Rendering.QualityLevel = level
+        if setfpscap then setfpscap(120) end
     end)
+    
+    print("🔥 FPS BOOST AKTIF!")
 end
 
-local function applyPhysics(enabled)
+local function RemoveBoost()
+    settings().Rendering.QualityLevel = 10
+    settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+    Lighting.GlobalShadows = true
+    Lighting.ShadowSoftness = 0.5
+    Lighting.FogEnd = 100000
+    Lighting.FogStart = 0
+    Lighting.Brightness = 1
+    
+    local terrain = Workspace:FindFirstChildOfClass("Terrain")
+    if terrain then
+        terrain.WaterWaveSize = 10
+        terrain.WaterWaveSpeed = 5
+        terrain.WaterReflectance = 0.5
+        terrain.WaterTransparency = 0.5
+    end
+    
     pcall(function()
-        settings().Physics.AllowSleep = enabled
+        if setfpscap then setfpscap(60) end
     end)
+    
+    print("⛔ BOOST DIMATIKAN!")
 end
-
-local function applyAll()
-    applyPostEffects(settings.removePostEffects)
-    applyMaterials(settings.flatMaterials)
-    applyDecals(settings.hideDecals)
-    applyTerrain(settings.flatTerrain)
-    applyQuality(settings.qualityLevel)
-    applyPhysics(settings.physicsSleep)
-    print("🔥 SEMUA FITUR AKTIF!")
-end
-
-local function revertAll()
-    applyPostEffects(false)
-    applyMaterials(false)
-    applyDecals(false)
-    applyTerrain(false)
-    pcall(function() settings().Rendering.QualityLevel = 21 end)
-    pcall(function() settings().Physics.AllowSleep = false end)
-    print("⛔ SEMUA FITUR DIMATIKAN!")
-end
-
-local masterEnabled = false
-
--- DescendantAdded listener
-Workspace.DescendantAdded:Connect(function(instance)
-    if not settings.flatMaterials and not settings.hideDecals then return end
-    if player.Character and instance:IsDescendantOf(player.Character) then return end
-    if settings.flatMaterials and instance:IsA("BasePart") then
-        instance.Material    = Enum.Material.SmoothPlastic
-        instance.Reflectance = 0
-    end
-    if settings.hideDecals and (instance:IsA("Texture") or instance:IsA("Decal")) then
-        instance.Transparency = 1
-    end
-end)
 
 -- =====================
--- UI VLEXHUB HITAM
+-- ANTI BAND
 -- =====================
-local function CreateUI()
+local function AntiBand()
+    pcall(function()
+        getgenv().VLEXHUB = nil
+        getgenv().masterEnabled = nil
+        getgenv().flatScreenEnabled = nil
+    end)
+    print("🔥 ANTI BAND AKTIF!")
+end
+
+-- =====================
+-- UI DARURAT (KALO GAGAL)
+-- =====================
+local function CreateEmergencyUI()
+    print("⚠️ MODE DARURAT AKTIF!")
+    UI_MODE = "DARURAT"
+    
     -- HAPUS UI LAMA
     for _, v in pairs(player.PlayerGui:GetChildren()) do
         if v.Name == "VLEXHUB_UI" then
@@ -181,466 +133,452 @@ local function CreateUI()
         end
     end
     
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name           = "VLEXHUB_UI"
-    screenGui.ResetOnSpawn   = false
-    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    screenGui.DisplayOrder   = 999
-    screenGui.Parent = player.PlayerGui
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "VLEXHUB_UI"
+    ScreenGui.Parent = player.PlayerGui
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Enabled = true
     
-    -- Main Frame (HITAM)
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Size              = UDim2.new(0, 280, 0, 400)
-    mainFrame.Position          = UDim2.new(0, 16, 0.5, -200)
-    mainFrame.BackgroundColor3  = Color3.fromRGB(10, 10, 10)
-    mainFrame.BorderSizePixel   = 0
-    mainFrame.Active            = true
-    mainFrame.Draggable         = true
-    mainFrame.Parent            = screenGui
+    -- FRAME UTAMA (BESAR BIAR MUDAH DIKLIK)
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Size = UDim2.new(0, 280, 0, 220)
+    MainFrame.Position = UDim2.new(0.5, -140, 0.5, -110)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    MainFrame.BackgroundTransparency = 0.1
+    MainFrame.BorderSizePixel = 3
+    MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 0) -- MERAH TANDA DARURAT
+    MainFrame.Active = true
+    MainFrame.Draggable = true
+    MainFrame.Visible = true
+    MainFrame.Parent = ScreenGui
     
-    local mainCorner = Instance.new("UICorner")
-    mainCorner.CornerRadius = UDim.new(0, 10)
-    mainCorner.Parent       = mainFrame
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 10)
+    Corner.Parent = MainFrame
     
-    local mainStroke = Instance.new("UIStroke")
-    mainStroke.Color     = Color3.fromRGB(30, 30, 30)
-    mainStroke.Thickness = 1
-    mainStroke.Parent    = mainFrame
+    -- JUDUL DARURAT
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Size = UDim2.new(1, 0, 0, 35)
+    TitleLabel.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    TitleLabel.BackgroundTransparency = 0.5
+    TitleLabel.Text = "⚠️ VLEXHUB DARURAT ⚠️"
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.TextSize = 14
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.Parent = MainFrame
     
-    -- Title Bar (HITAM)
-    local titleBar = Instance.new("Frame")
-    titleBar.Size             = UDim2.new(1, 0, 0, 44)
-    titleBar.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    titleBar.BorderSizePixel  = 0
-    titleBar.Parent           = mainFrame
+    -- STATUS DARURAT
+    local StatusLabel = Instance.new("TextLabel")
+    StatusLabel.Size = UDim2.new(1, 0, 0, 25)
+    StatusLabel.Position = UDim2.new(0, 0, 0, 40)
+    StatusLabel.BackgroundTransparency = 1
+    StatusLabel.Text = "🔴 MODE DARURAT AKTIF!"
+    StatusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+    StatusLabel.TextSize = 13
+    StatusLabel.Font = Enum.Font.GothamBold
+    StatusLabel.Parent = MainFrame
     
-    local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, 10)
-    titleCorner.Parent       = titleBar
+    -- FPS COUNTER
+    local FPSLabel = Instance.new("TextLabel")
+    FPSLabel.Size = UDim2.new(1, 0, 0, 25)
+    FPSLabel.Position = UDim2.new(0, 0, 0, 70)
+    FPSLabel.BackgroundTransparency = 1
+    FPSLabel.Text = "FPS: 0"
+    FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    FPSLabel.TextSize = 14
+    FPSLabel.Font = Enum.Font.GothamBold
+    FPSLabel.Parent = MainFrame
     
-    local titleFix = Instance.new("Frame")
-    titleFix.Size             = UDim2.new(1, 0, 0, 10)
-    titleFix.Position         = UDim2.new(0, 0, 1, -10)
-    titleFix.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-    titleFix.BorderSizePixel  = 0
-    titleFix.Parent           = titleBar
+    -- TOMBOL BOOST
+    local BoostButton = Instance.new("TextButton")
+    BoostButton.Size = UDim2.new(0, 110, 0, 32)
+    BoostButton.Position = UDim2.new(0.5, -55, 0, 105)
+    BoostButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    BoostButton.Text = "🚀 BOOST ON"
+    BoostButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    BoostButton.TextSize = 12
+    BoostButton.Font = Enum.Font.GothamBold
+    BoostButton.BorderSizePixel = 0
+    BoostButton.Parent = MainFrame
     
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size              = UDim2.new(1, -90, 1, 0)
-    titleLabel.Position          = UDim2.new(0, 14, 0, 0)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text              = "VLEXHUB"
-    titleLabel.TextColor3        = Color3.fromRGB(255, 255, 255)
-    titleLabel.TextSize          = 14
-    titleLabel.Font              = Enum.Font.GothamBold
-    titleLabel.TextXAlignment    = Enum.TextXAlignment.Left
-    titleLabel.Parent            = titleBar
+    local BoostCorner = Instance.new("UICorner")
+    BoostCorner.CornerRadius = UDim.new(0, 8)
+    BoostCorner.Parent = BoostButton
     
-    -- Master ON/OFF button (HITAM)
-    local masterBtn = Instance.new("TextButton")
-    masterBtn.Size               = UDim2.new(0, 42, 0, 24)
-    masterBtn.Position           = UDim2.new(1, -82, 0.5, -12)
-    masterBtn.BackgroundColor3   = Color3.fromRGB(30, 30, 30)
-    masterBtn.Text               = "OFF"
-    masterBtn.TextColor3         = Color3.fromRGB(200, 200, 200)
-    masterBtn.TextSize           = 11
-    masterBtn.Font               = Enum.Font.GothamBold
-    masterBtn.BorderSizePixel    = 0
-    masterBtn.Parent             = titleBar
+    -- TOMBOL GEPENG
+    local FlatButton = Instance.new("TextButton")
+    FlatButton.Size = UDim2.new(0, 110, 0, 32)
+    FlatButton.Position = UDim2.new(0.5, -55, 0, 145)
+    FlatButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    FlatButton.Text = "📐 GEPENG OFF"
+    FlatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FlatButton.TextSize = 12
+    FlatButton.Font = Enum.Font.GothamBold
+    FlatButton.BorderSizePixel = 0
+    FlatButton.Parent = MainFrame
     
-    local masterCorner = Instance.new("UICorner")
-    masterCorner.CornerRadius = UDim.new(0, 6)
-    masterCorner.Parent       = masterBtn
+    local FlatCorner = Instance.new("UICorner")
+    FlatCorner.CornerRadius = UDim.new(0, 8)
+    FlatCorner.Parent = FlatButton
     
-    -- Minimize button (HITAM)
-    local minBtn = Instance.new("TextButton")
-    minBtn.Size                  = UDim2.new(0, 28, 0, 28)
-    minBtn.Position              = UDim2.new(1, -34, 0.5, -14)
-    minBtn.BackgroundColor3      = Color3.fromRGB(30, 30, 30)
-    minBtn.Text                  = "–"
-    minBtn.TextColor3            = Color3.fromRGB(255, 255, 255)
-    minBtn.TextSize              = 16
-    minBtn.Font                  = Enum.Font.GothamBold
-    minBtn.BorderSizePixel       = 0
-    minBtn.Parent                = titleBar
+    -- TOMBOL CLOSE
+    local CloseButton = Instance.new("TextButton")
+    CloseButton.Size = UDim2.new(0, 30, 0, 30)
+    CloseButton.Position = UDim2.new(1, -35, 0, 5)
+    CloseButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    CloseButton.BackgroundTransparency = 0.5
+    CloseButton.Text = "X"
+    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseButton.TextSize = 14
+    CloseButton.Font = Enum.Font.GothamBold
+    CloseButton.BorderSizePixel = 0
+    CloseButton.Parent = MainFrame
     
-    local minCorner = Instance.new("UICorner")
-    minCorner.CornerRadius = UDim.new(0, 6)
-    minCorner.Parent       = minBtn
-    
-    -- Content (HITAM)
-    local content = Instance.new("ScrollingFrame")
-    content.Size                = UDim2.new(1, 0, 1, -44)
-    content.Position            = UDim2.new(0, 0, 0, 44)
-    content.BackgroundTransparency = 1
-    content.BorderSizePixel     = 0
-    content.ScrollBarThickness  = 3
-    content.ScrollBarImageColor3 = Color3.fromRGB(50, 50, 50)
-    content.CanvasSize          = UDim2.new(0, 0, 0, 0)
-    content.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    content.Parent              = mainFrame
-    
-    local contentLayout = Instance.new("UIListLayout")
-    contentLayout.Padding       = UDim.new(0, 0)
-    contentLayout.SortOrder     = Enum.SortOrder.LayoutOrder
-    contentLayout.Parent        = content
-    
-    local contentPad = Instance.new("UIPadding")
-    contentPad.PaddingLeft   = UDim.new(0, 14)
-    contentPad.PaddingRight  = UDim.new(0, 14)
-    contentPad.PaddingTop    = UDim.new(0, 10)
-    contentPad.PaddingBottom = UDim.new(0, 10)
-    contentPad.Parent        = content
-    
-    -- =====================
-    -- Toggle Helper (HITAM)
-    -- =====================
-    local function makeToggle(labelText, description, defaultOn, layoutOrder, callback)
-        local row = Instance.new("Frame")
-        row.Size              = UDim2.new(1, 0, 0, 56)
-        row.BackgroundColor3  = Color3.fromRGB(20, 20, 20)
-        row.BorderSizePixel   = 0
-        row.LayoutOrder       = layoutOrder
-        row.Parent            = content
-        
-        local rowCorner = Instance.new("UICorner")
-        rowCorner.CornerRadius = UDim.new(0, 8)
-        rowCorner.Parent       = row
-        
-        local lbl = Instance.new("TextLabel")
-        lbl.Size                 = UDim2.new(1, -64, 0, 20)
-        lbl.Position             = UDim2.new(0, 12, 0, 10)
-        lbl.BackgroundTransparency = 1
-        lbl.Text                 = labelText
-        lbl.TextColor3           = Color3.fromRGB(255, 255, 255)
-        lbl.TextSize             = 13
-        lbl.Font                 = Enum.Font.GothamBold
-        lbl.TextXAlignment       = Enum.TextXAlignment.Left
-        lbl.Parent               = row
-        
-        local desc = Instance.new("TextLabel")
-        desc.Size                = UDim2.new(1, -64, 0, 16)
-        desc.Position            = UDim2.new(0, 12, 0, 30)
-        desc.BackgroundTransparency = 1
-        desc.Text                = description
-        desc.TextColor3          = Color3.fromRGB(150, 150, 150)
-        desc.TextSize            = 11
-        desc.Font                = Enum.Font.Gotham
-        desc.TextXAlignment      = Enum.TextXAlignment.Left
-        desc.Parent              = row
-        
-        -- Toggle pill (HITAM)
-        local toggleBg = Instance.new("Frame")
-        toggleBg.Size            = UDim2.new(0, 40, 0, 22)
-        toggleBg.Position        = UDim2.new(1, -52, 0.5, -11)
-        toggleBg.BackgroundColor3 = defaultOn and Color3.fromRGB(60, 60, 60) or Color3.fromRGB(30, 30, 30)
-        toggleBg.BorderSizePixel = 0
-        toggleBg.Parent          = row
-        
-        local pillCorner = Instance.new("UICorner")
-        pillCorner.CornerRadius = UDim.new(1, 0)
-        pillCorner.Parent       = toggleBg
-        
-        local knob = Instance.new("Frame")
-        knob.Size            = UDim2.new(0, 16, 0, 16)
-        knob.Position        = defaultOn and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
-        knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        knob.BorderSizePixel = 0
-        knob.Parent          = toggleBg
-        
-        local knobCorner = Instance.new("UICorner")
-        knobCorner.CornerRadius = UDim.new(1, 0)
-        knobCorner.Parent       = knob
-        
-        local isOn = defaultOn
-        local btn = Instance.new("TextButton")
-        btn.Size                 = UDim2.new(1, 0, 1, 0)
-        btn.BackgroundTransparency = 1
-        btn.Text                 = ""
-        btn.Parent               = row
-        
-        btn.MouseButton1Click:Connect(function()
-            isOn = not isOn
-            local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad)
-            TweenService:Create(toggleBg, tweenInfo, {
-                BackgroundColor3 = isOn and Color3.fromRGB(60, 60, 60) or Color3.fromRGB(30, 30, 30)
-            }):Play()
-            TweenService:Create(knob, tweenInfo, {
-                Position = isOn and UDim2.new(1, -19, 0.5, -8) or UDim2.new(0, 3, 0.5, -8)
-            }):Play()
-            callback(isOn)
-        end)
-        
-        return row
-    end
-    
-    -- =====================
-    -- Section Label Helper (HITAM)
-    -- =====================
-    local function makeSection(text, layoutOrder)
-        local lbl = Instance.new("TextLabel")
-        lbl.Size             = UDim2.new(1, 0, 0, 28)
-        lbl.BackgroundTransparency = 1
-        lbl.Text             = text
-        lbl.TextColor3       = Color3.fromRGB(200, 200, 200)
-        lbl.TextSize         = 11
-        lbl.Font             = Enum.Font.GothamBold
-        lbl.TextXAlignment   = Enum.TextXAlignment.Left
-        lbl.LayoutOrder      = layoutOrder
-        lbl.Parent           = content
-    end
-    
-    -- =====================
-    -- Slider Helper (HITAM)
-    -- =====================
-    local function makeSlider(labelText, min, max, default, layoutOrder, callback)
-        local row = Instance.new("Frame")
-        row.Size             = UDim2.new(1, 0, 0, 64)
-        row.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-        row.BorderSizePixel  = 0
-        row.LayoutOrder      = layoutOrder
-        row.Parent           = content
-        
-        local rowCorner = Instance.new("UICorner")
-        rowCorner.CornerRadius = UDim.new(0, 8)
-        rowCorner.Parent       = row
-        
-        local lbl = Instance.new("TextLabel")
-        lbl.Size             = UDim2.new(1, -50, 0, 18)
-        lbl.Position         = UDim2.new(0, 12, 0, 10)
-        lbl.BackgroundTransparency = 1
-        lbl.Text             = labelText
-        lbl.TextColor3       = Color3.fromRGB(255, 255, 255)
-        lbl.TextSize         = 13
-        lbl.Font             = Enum.Font.GothamBold
-        lbl.TextXAlignment   = Enum.TextXAlignment.Left
-        lbl.Parent           = row
-        
-        local valLabel = Instance.new("TextLabel")
-        valLabel.Size        = UDim2.new(0, 38, 0, 18)
-        valLabel.Position    = UDim2.new(1, -50, 0, 10)
-        valLabel.BackgroundTransparency = 1
-        valLabel.Text        = tostring(default)
-        valLabel.TextColor3  = Color3.fromRGB(200, 200, 200)
-        valLabel.TextSize    = 13
-        valLabel.Font        = Enum.Font.GothamBold
-        valLabel.TextXAlignment = Enum.TextXAlignment.Right
-        valLabel.Parent      = row
-        
-        -- Slider track (HITAM)
-        local track = Instance.new("Frame")
-        track.Size           = UDim2.new(1, -24, 0, 4)
-        track.Position       = UDim2.new(0, 12, 0, 40)
-        track.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        track.BorderSizePixel = 0
-        track.Parent         = row
-        
-        local trackCorner = Instance.new("UICorner")
-        trackCorner.CornerRadius = UDim.new(1, 0)
-        trackCorner.Parent       = track
-        
-        local fill = Instance.new("Frame")
-        local pct = (default - min) / (max - min)
-        fill.Size            = UDim2.new(pct, 0, 1, 0)
-        fill.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-        fill.BorderSizePixel = 0
-        fill.Parent          = track
-        
-        local fillCorner = Instance.new("UICorner")
-        fillCorner.CornerRadius = UDim.new(1, 0)
-        fillCorner.Parent       = fill
-        
-        local thumb = Instance.new("Frame")
-        thumb.Size           = UDim2.new(0, 14, 0, 14)
-        thumb.Position       = UDim2.new(pct, -7, 0.5, -7)
-        thumb.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        thumb.BorderSizePixel = 0
-        thumb.ZIndex         = 2
-        thumb.Parent         = track
-        
-        local thumbCorner = Instance.new("UICorner")
-        thumbCorner.CornerRadius = UDim.new(1, 0)
-        thumbCorner.Parent       = thumb
-        
-        local dragging = false
-        local trackBtn = Instance.new("TextButton")
-        trackBtn.Size            = UDim2.new(1, 0, 0, 24)
-        trackBtn.Position        = UDim2.new(0, 0, 0, 32)
-        trackBtn.BackgroundTransparency = 1
-        trackBtn.Text            = ""
-        trackBtn.ZIndex          = 3
-        trackBtn.Parent          = row
-        
-        local function updateSlider(input)
-            local trackAbs = track.AbsolutePosition
-            local trackSize = track.AbsoluteSize
-            local relX = math.clamp((input.Position.X - trackAbs.X) / trackSize.X, 0, 1)
-            local value = math.round(min + relX * (max - min))
-            valLabel.Text = tostring(value)
-            fill.Size     = UDim2.new(relX, 0, 1, 0)
-            thumb.Position = UDim2.new(relX, -7, 0.5, -7)
-            callback(value)
-        end
-        
-        trackBtn.MouseButton1Down:Connect(function()
-            dragging = true
-        end)
-        
-        UserInputService.InputChanged:Connect(function(input)
-            if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-                updateSlider(input)
-            end
-        end)
-        
-        UserInputService.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 then
-                dragging = false
-            end
-        end)
-        
-        trackBtn.MouseButton1Up:Connect(function(x, y)
-            local input = {Position = Vector3.new(x, y, 0)}
-            updateSlider({Position = Vector3.new(x, y, 0)})
-        end)
-    end
-    
-    -- =====================
-    -- Build UI Items
-    -- =====================
-    makeSection("LIGHTING", 0)
-    makeToggle("Remove Post Effects", "Bloom, blur, color correction", settings.removePostEffects, 1, function(v)
-        settings.removePostEffects = v
-        if masterEnabled then applyPostEffects(v) end
-    end)
-    makeToggle("Disable Shadows", "Global shadow rendering", settings.disableShadows, 2, function(v)
-        settings.disableShadows = v
-        if masterEnabled then Lighting.GlobalShadows = not v end
-    end)
-    
-    makeSection("WORLD", 10)
-    makeToggle("Flat Materials", "SmoothPlastic on all parts", settings.flatMaterials, 11, function(v)
-        settings.flatMaterials = v
-        if masterEnabled then applyMaterials(v) end
-    end)
-    makeToggle("Hide Decals & Textures", "Makes all textures invisible", settings.hideDecals, 12, function(v)
-        settings.hideDecals = v
-        if masterEnabled then applyDecals(v) end
-    end)
-    makeToggle("Flat Terrain Water", "Remove water waves & reflections", settings.flatTerrain, 13, function(v)
-        settings.flatTerrain = v
-        if masterEnabled then applyTerrain(v) end
-    end)
-    
-    makeSection("PERFORMANCE", 20)
-    makeSlider("Render Quality", 1, 21, settings.qualityLevel, 21, function(v)
-        settings.qualityLevel = v
-        if masterEnabled then pcall(function() settings().Rendering.QualityLevel = v end) end
-    end)
-    makeToggle("Physics Sleep", "Idle parts skip physics calc", settings.physicsSleep, 22, function(v)
-        settings.physicsSleep = v
-        if masterEnabled then pcall(function() settings().Physics.AllowSleep = v end) end
-    end)
-    
-    -- =====================
-    -- Minimize Logic
-    -- =====================
-    local minimized = false
-    minBtn.MouseButton1Click:Connect(function()
-        minimized = not minimized
-        local tweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad)
-        if minimized then
-            TweenService:Create(mainFrame, tweenInfo, {Size = UDim2.new(0, 280, 0, 44)}):Play()
-            minBtn.Text = "+"
-        else
-            TweenService:Create(mainFrame, tweenInfo, {Size = UDim2.new(0, 280, 0, 400)}):Play()
-            minBtn.Text = "–"
-        end
-    end)
-    
-    -- =====================
-    -- Master ON/OFF Logic
-    -- =====================
-    masterBtn.MouseButton1Click:Connect(function()
+    -- ====== FUNGSI TOMBOL ======
+    BoostButton.MouseButton1Click:Connect(function()
         masterEnabled = not masterEnabled
-        local tweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad)
         if masterEnabled then
-            masterBtn.Text = "ON"
-            TweenService:Create(masterBtn, tweenInfo, {
-                BackgroundColor3 = Color3.fromRGB(60, 60, 60),
-                TextColor3       = Color3.fromRGB(255, 255, 255),
-            }):Play()
-            applyAll()
+            ApplyBoost()
+            BoostButton.Text = "🚀 BOOST OFF"
+            BoostButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+            StarterGui:SetCore("SendNotification", {
+                Title = "VLEXHUB DARURAT",
+                Text = "FPS BOOST AKTIF!",
+                Duration = 3,
+                Button1 = "OK"
+            })
         else
-            masterBtn.Text = "OFF"
-            TweenService:Create(masterBtn, tweenInfo, {
-                BackgroundColor3 = Color3.fromRGB(30, 30, 30),
-                TextColor3       = Color3.fromRGB(200, 200, 200),
-            }):Play()
-            revertAll()
+            RemoveBoost()
+            BoostButton.Text = "🚀 BOOST ON"
+            BoostButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+            StarterGui:SetCore("SendNotification", {
+                Title = "VLEXHUB DARURAT",
+                Text = "FPS BOOST DIMATIKAN!",
+                Duration = 3,
+                Button1 = "OK"
+            })
         end
     end)
     
-    print("✅ UI VLEXHUB BERHASIL!")
+    FlatButton.MouseButton1Click:Connect(function()
+        flatScreenEnabled = not flatScreenEnabled
+        if flatScreenEnabled then
+            ApplyFlatScreen()
+            FlatButton.Text = "📐 GEPENG ON"
+            FlatButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            StarterGui:SetCore("SendNotification", {
+                Title = "VLEXHUB DARURAT",
+                Text = "LAYAR GEPENG AKTIF!",
+                Duration = 3,
+                Button1 = "OK"
+            })
+        else
+            RemoveFlatScreen()
+            FlatButton.Text = "📐 GEPENG OFF"
+            FlatButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            StarterGui:SetCore("SendNotification", {
+                Title = "VLEXHUB DARURAT",
+                Text = "LAYAR GEPENG DIMATIKAN!",
+                Duration = 3,
+                Button1 = "OK"
+            })
+        end
+    end)
+    
+    CloseButton.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+        RemoveBoost()
+        RemoveFlatScreen()
+    end)
+    
+    -- ====== UPDATE FPS ======
+    local function UpdateFPS()
+        local fps = 0
+        local lastTime = tick()
+        local frameCount = 0
+        
+        RunService.RenderStepped:Connect(function()
+            frameCount = frameCount + 1
+            local currentTime = tick()
+            if currentTime - lastTime >= 0.5 then
+                fps = math.floor(frameCount / (currentTime - lastTime))
+                frameCount = 0
+                lastTime = currentTime
+                FPSLabel.Text = "FPS: " .. fps
+                if fps >= 60 then
+                    FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                elseif fps >= 30 then
+                    FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                else
+                    FPSLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                end
+            end
+        end)
+    end
+    
+    UpdateFPS()
+    
+    StarterGui:SetCore("SendNotification", {
+        Title = "⚠️ VLEXHUB DARURAT",
+        Text = "MODE DARURAT AKTIF! SEMUA FITUR TETAP JALAN!",
+        Duration = 5,
+        Button1 = "OK"
+    })
+    
+    print("✅ UI DARURAT VLEXHUB BERHASIL!")
     return true
 end
 
 -- =====================
--- EKSEKUSI UI
+-- UI NORMAL
+-- =====================
+local function CreateNormalUI()
+    print("🟢 MODE NORMAL AKTIF!")
+    UI_MODE = "NORMAL"
+    
+    -- HAPUS UI LAMA
+    for _, v in pairs(player.PlayerGui:GetChildren()) do
+        if v.Name == "VLEXHUB_UI" then
+            v:Destroy()
+        end
+    end
+    
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "VLEXHUB_UI"
+    ScreenGui.Parent = player.PlayerGui
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Enabled = true
+    
+    -- MAIN FRAME
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Size = UDim2.new(0, 240, 0, 200)
+    MainFrame.Position = UDim2.new(0.5, -120, 0.5, -100)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
+    MainFrame.BackgroundTransparency = 0.1
+    MainFrame.BorderSizePixel = 2
+    MainFrame.BorderColor3 = Color3.fromRGB(255, 255, 255)
+    MainFrame.Active = true
+    MainFrame.Draggable = true
+    MainFrame.Visible = true
+    MainFrame.Parent = ScreenGui
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 10)
+    Corner.Parent = MainFrame
+    
+    -- JUDUL
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Size = UDim2.new(1, 0, 0, 30)
+    TitleLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    TitleLabel.Text = "VLEXHUB FPS"
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.TextSize = 14
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.Parent = MainFrame
+    
+    -- STATUS FPS
+    local FPSLabel = Instance.new("TextLabel")
+    FPSLabel.Size = UDim2.new(1, 0, 0, 25)
+    FPSLabel.Position = UDim2.new(0, 0, 0, 35)
+    FPSLabel.BackgroundTransparency = 1
+    FPSLabel.Text = "FPS: 0"
+    FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    FPSLabel.TextSize = 14
+    FPSLabel.Font = Enum.Font.GothamBold
+    FPSLabel.Parent = MainFrame
+    
+    -- TOMBOL BOOST
+    local BoostButton = Instance.new("TextButton")
+    BoostButton.Size = UDim2.new(0, 100, 0, 30)
+    BoostButton.Position = UDim2.new(0.5, -50, 0, 70)
+    BoostButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    BoostButton.Text = "BOOST ON"
+    BoostButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    BoostButton.TextSize = 12
+    BoostButton.Font = Enum.Font.GothamBold
+    BoostButton.BorderSizePixel = 0
+    BoostButton.Parent = MainFrame
+    
+    local BoostCorner = Instance.new("UICorner")
+    BoostCorner.CornerRadius = UDim.new(0, 8)
+    BoostCorner.Parent = BoostButton
+    
+    -- TOMBOL LAYAR GEPENG
+    local FlatButton = Instance.new("TextButton")
+    FlatButton.Size = UDim2.new(0, 100, 0, 30)
+    FlatButton.Position = UDim2.new(0.5, -50, 0, 110)
+    FlatButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    FlatButton.Text = "GEPENG OFF"
+    FlatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FlatButton.TextSize = 12
+    FlatButton.Font = Enum.Font.GothamBold
+    FlatButton.BorderSizePixel = 0
+    FlatButton.Parent = MainFrame
+    
+    local FlatCorner = Instance.new("UICorner")
+    FlatCorner.CornerRadius = UDim.new(0, 8)
+    FlatCorner.Parent = FlatButton
+    
+    -- TOMBOL CLOSE
+    local CloseButton = Instance.new("TextButton")
+    CloseButton.Size = UDim2.new(0, 25, 0, 25)
+    CloseButton.Position = UDim2.new(1, -30, 0, 3)
+    CloseButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    CloseButton.BackgroundTransparency = 0.5
+    CloseButton.Text = "X"
+    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseButton.TextSize = 12
+    CloseButton.Font = Enum.Font.GothamBold
+    CloseButton.BorderSizePixel = 0
+    CloseButton.Parent = MainFrame
+    
+    -- ====== FUNGSI TOMBOL ======
+    BoostButton.MouseButton1Click:Connect(function()
+        masterEnabled = not masterEnabled
+        if masterEnabled then
+            ApplyBoost()
+            BoostButton.Text = "BOOST OFF"
+            BoostButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+            StarterGui:SetCore("SendNotification", {
+                Title = "VLEXHUB",
+                Text = "FPS BOOST AKTIF!",
+                Duration = 3,
+                Button1 = "OK"
+            })
+        else
+            RemoveBoost()
+            BoostButton.Text = "BOOST ON"
+            BoostButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+            StarterGui:SetCore("SendNotification", {
+                Title = "VLEXHUB",
+                Text = "FPS BOOST DIMATIKAN!",
+                Duration = 3,
+                Button1 = "OK"
+            })
+        end
+    end)
+    
+    FlatButton.MouseButton1Click:Connect(function()
+        flatScreenEnabled = not flatScreenEnabled
+        if flatScreenEnabled then
+            ApplyFlatScreen()
+            FlatButton.Text = "GEPENG ON"
+            FlatButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            StarterGui:SetCore("SendNotification", {
+                Title = "VLEXHUB",
+                Text = "LAYAR GEPENG AKTIF!",
+                Duration = 3,
+                Button1 = "OK"
+            })
+        else
+            RemoveFlatScreen()
+            FlatButton.Text = "GEPENG OFF"
+            FlatButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            StarterGui:SetCore("SendNotification", {
+                Title = "VLEXHUB",
+                Text = "LAYAR GEPENG DIMATIKAN!",
+                Duration = 3,
+                Button1 = "OK"
+            })
+        end
+    end)
+    
+    CloseButton.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+        RemoveBoost()
+        RemoveFlatScreen()
+    end)
+    
+    -- ====== UPDATE FPS ======
+    local function UpdateFPS()
+        local fps = 0
+        local lastTime = tick()
+        local frameCount = 0
+        
+        RunService.RenderStepped:Connect(function()
+            frameCount = frameCount + 1
+            local currentTime = tick()
+            if currentTime - lastTime >= 0.5 then
+                fps = math.floor(frameCount / (currentTime - lastTime))
+                frameCount = 0
+                lastTime = currentTime
+                FPSLabel.Text = "FPS: " .. fps
+                if fps >= 60 then
+                    FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                elseif fps >= 30 then
+                    FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+                else
+                    FPSLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+                end
+            end
+        end)
+    end
+    
+    UpdateFPS()
+    
+    StarterGui:SetCore("SendNotification", {
+        Title = "VLEXHUB",
+        Text = "FPS BOOST + GEPENG + ANTI BAND AKTIF!",
+        Duration = 5,
+        Button1 = "OK"
+    })
+    
+    print("✅ UI NORMAL VLEXHUB BERHASIL!")
+    return true
+end
+
+-- =====================
+-- EKSEKUSI UI (DENGAN MODE DARURAT)
 -- =====================
 local success = false
+
+-- COBA UI NORMAL
 pcall(function()
-    success = CreateUI()
+    success = CreateNormalUI()
 end)
 
+-- KALO GAGAL, COBA UI DARURAT
 if not success or not player.PlayerGui:FindFirstChild("VLEXHUB_UI") then
+    print("⚠️ UI NORMAL GAGAL! AKTIFKAN MODE DARURAT...")
     task.wait(1)
+    
+    -- HAPUS UI LAMA KALO ADA
+    for _, v in pairs(player.PlayerGui:GetChildren()) do
+        if v.Name == "VLEXHUB_UI" then
+            v:Destroy()
+        end
+    end
+    
     pcall(function()
-        success = CreateUI()
+        success = CreateEmergencyUI()
     end)
 end
 
--- UI DARURAT
+-- KALO MASIH GAGAL, UI PALING SEDERHANA (LEWAT NOTIF)
 if not success or not player.PlayerGui:FindFirstChild("VLEXHUB_UI") then
-    print("⚠️ UI GAGAL, PAKE UI DARURAT...")
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "VLEXHUB_UI"
-    screenGui.Parent = player.PlayerGui
-    screenGui.ResetOnSpawn = false
+    print("⚠️ UI DARURAT JUGA GAGAL! PAKE NOTIFIKASI...")
     
-    local mainFrame = Instance.new("Frame")
-    mainFrame.Size = UDim2.new(0, 200, 0, 100)
-    mainFrame.Position = UDim2.new(0.5, -100, 0.5, -50)
-    mainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-    mainFrame.BorderSizePixel = 2
-    mainFrame.BorderColor3 = Color3.fromRGB(255, 255, 255)
-    mainFrame.Parent = screenGui
+    -- TETAP JALANKAN FUNGSI VIA NOTIF
+    StarterGui:SetCore("SendNotification", {
+        Title = "⚠️ VLEXHUB",
+        Text = "UI GAGAL TAMPIL! TAPI FITUR TETAP JALAN!",
+        Duration = 10,
+        Button1 = "OK"
+    })
     
-    local titleLabel = Instance.new("TextLabel")
-    titleLabel.Size = UDim2.new(1, 0, 1, 0)
-    titleLabel.BackgroundTransparency = 1
-    titleLabel.Text = "VLEXHUB"
-    titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    titleLabel.TextSize = 20
-    titleLabel.Font = Enum.Font.GothamBold
-    titleLabel.Parent = mainFrame
+    -- JALANKAN BOOST OTOMATIS (BIAR TETAP BERGUNA)
+    ApplyBoost()
+    ApplyFlatScreen()
     
-    local closeBtn = Instance.new("TextButton")
-    closeBtn.Size = UDim2.new(0, 25, 0, 25)
-    closeBtn.Position = UDim2.new(1, -28, 0, 2)
-    closeBtn.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-    closeBtn.BackgroundTransparency = 0.5
-    closeBtn.Text = "X"
-    closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    closeBtn.TextSize = 12
-    closeBtn.Font = Enum.Font.GothamBold
-    closeBtn.BorderSizePixel = 0
-    closeBtn.Parent = mainFrame
-    
-    closeBtn.MouseButton1Click:Connect(function()
-        screenGui:Destroy()
-    end)
-    
-    print("✅ UI DARURAT VLEXHUB BERHASIL!")
+    print("✅ MODE TANPA UI AKTIF!")
 end
 
-print("🔥 SCRIPT VLEXHUB FPS OPTIMIZER SELESAI!")
+-- ====== ANTI BAND ======
+AntiBand()
+
+print("🔥 VLEXHUB FPS BOOST + GEPENG + ANTI BAND SELESAI!")
+print("🔴 MODE UI: " .. UI_MODE)
