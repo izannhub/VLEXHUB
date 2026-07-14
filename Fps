@@ -1,283 +1,38 @@
--- =============================================
--- SCRIPT MONITOR FPS + OPTIMASI RESOLUSI
--- + UI VLEXHUB
--- =============================================
-
-print("🔥 VLEXHUB FPS MONITOR + OPTIMASI AKTIF!")
-
-repeat task.wait() until game:IsLoaded()
-repeat task.wait() until game:GetService("Players").LocalPlayer
-task.wait(2)
-
-local player = game:GetService("Players").LocalPlayer
-local StarterGui = game:GetService("StarterGui")
-local RunService = game:GetService("RunService")
-local Camera = workspace.CurrentCamera
-local Lighting = game:GetService("Lighting")
-
--- =====================
--- KONFIGURASI GLOBAL
--- =====================
+-- Configurações Globais
 getgenv().Resolution = {
-    [".gg/scripters"] = 0.65 -- Semakin kecil, semakin tinggi FPS (tapi gambar makin pecah)
+    [".gg/scripters"] = 0.65 -- Quanto menor, mais FPS (e imagem mais esticada/baixa)
 }
 
--- =====================
--- FUNGSI OPTIMASI MAP
--- =====================
+local Camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+
+-- 1. PARTE: REMOÇÃO DE TEXTURAS E OTIMIZAÇÃO DE MATERIAIS
 local function limparMapa()
     for _, objeto in pairs(game.Workspace:GetDescendants()) do
-        pcall(function()
-            if objeto:IsA("Decal") or objeto:IsA("Texture") then
-                objeto:Destroy()
-            elseif objeto:IsA("BasePart") or objeto:IsA("MeshPart") or objeto:IsA("UnionOperation") then
-                objeto.Material = Enum.Material.SmoothPlastic
-                objeto.Reflectance = 0
-                if objeto:IsA("MeshPart") then
-                    objeto.TextureID = ""
-                end
+        if objeto:IsA("Decal") or objeto:IsA("Texture") then
+            objeto:Destroy()
+        elseif objeto:IsA("BasePart") or objeto:IsA("MeshPart") or objeto:IsA("UnionOperation") then
+            objeto.Material = Enum.Material.SmoothPlastic
+            objeto.Reflectance = 0
+            if objeto:IsA("MeshPart") then
+                objeto.TextureID = ""
             end
-            if objeto:IsA("ParticleEmitter") or objeto:IsA("Trail") then
-                objeto.Enabled = false
-            end
-            if objeto:IsA("BloomEffect") or objeto:IsA("BlurEffect") or objeto:IsA("ColorCorrectionEffect") then
-                objeto.Enabled = false
-            end
-        end)
-    end
-    
-    -- MATIKIN SHADOW
-    Lighting.GlobalShadows = false
-    Lighting.ShadowSoftness = 0
-    Lighting.FogEnd = 9e9
-    
-    warn("🔥 Mapa otimizado: Texturas removidas!")
-end
-
--- =====================
--- FUNGSI OPTIMASI RESOLUSI
--- =====================
-local resolutionActive = false
-local resolutionValue = 0.65
-
-local function ApplyResolution(value)
-    resolutionValue = value or 0.65
-    resolutionActive = true
-    print("🔥 RESOLUSI DIOPTIMASI: " .. resolutionValue)
-end
-
-local function RemoveResolution()
-    resolutionActive = false
-    print("⛔ RESOLUSI DINORMALISASI!")
-end
-
--- =====================
--- BUAT UI MONITOR FPS + OPTIMASI
--- =====================
-local function CreateUI()
-    -- HAPUS UI LAMA
-    for _, v in pairs(player.PlayerGui:GetChildren()) do
-        if v.Name == "VLEXHUB_UI" then
-            v:Destroy()
+        end
+        if objeto:IsA("ParticleEmitter") or objeto:IsA("Trail") then
+            objeto.Enabled = false
         end
     end
-    
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "VLEXHUB_UI"
-    ScreenGui.Parent = player.PlayerGui
-    ScreenGui.ResetOnSpawn = false
-    
-    -- FRAME UTAMA
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 200, 0, 150)
-    MainFrame.Position = UDim2.new(0, 10, 0, 10)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    MainFrame.BackgroundTransparency = 0.2
-    MainFrame.BorderSizePixel = 2
-    MainFrame.BorderColor3 = Color3.fromRGB(255, 255, 255)
-    MainFrame.Active = true
-    MainFrame.Draggable = true
-    MainFrame.Parent = ScreenGui
-    
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 8)
-    Corner.Parent = MainFrame
-    
-    -- JUDUL
-    local TitleLabel = Instance.new("TextLabel")
-    TitleLabel.Size = UDim2.new(1, 0, 0, 22)
-    TitleLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    TitleLabel.Text = "⚡ VLEXHUB FPS"
-    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TitleLabel.TextSize = 10
-    TitleLabel.Font = Enum.Font.GothamBold
-    TitleLabel.Parent = MainFrame
-    
-    -- FPS COUNTER
-    local FPSLabel = Instance.new("TextLabel")
-    FPSLabel.Size = UDim2.new(1, 0, 0, 35)
-    FPSLabel.Position = UDim2.new(0, 0, 0, 24)
-    FPSLabel.BackgroundTransparency = 1
-    FPSLabel.Text = "0 FPS"
-    FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-    FPSLabel.TextSize = 24
-    FPSLabel.Font = Enum.Font.GothamBlack
-    FPSLabel.Parent = MainFrame
-    
-    -- TOMBOL OPTIMASI
-    local OptimizeButton = Instance.new("TextButton")
-    OptimizeButton.Size = UDim2.new(0, 120, 0, 28)
-    OptimizeButton.Position = UDim2.new(0.5, -60, 0, 68)
-    OptimizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    OptimizeButton.Text = "OPTIMIZE ON"
-    OptimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    OptimizeButton.TextSize = 11
-    OptimizeButton.Font = Enum.Font.GothamBold
-    OptimizeButton.BorderSizePixel = 0
-    OptimizeButton.Parent = MainFrame
-    
-    local OptimizeCorner = Instance.new("UICorner")
-    OptimizeCorner.CornerRadius = UDim.new(0, 6)
-    OptimizeCorner.Parent = OptimizeButton
-    
-    -- STATUS RESOLUSI
-    local ResStatus = Instance.new("TextLabel")
-    ResStatus.Size = UDim2.new(1, 0, 0, 16)
-    ResStatus.Position = UDim2.new(0, 0, 0, 105)
-    ResStatus.BackgroundTransparency = 1
-    ResStatus.Text = "🔴 RES: NORMAL"
-    ResStatus.TextColor3 = Color3.fromRGB(255, 0, 0)
-    ResStatus.TextSize = 9
-    ResStatus.Font = Enum.Font.Gotham
-    ResStatus.Parent = MainFrame
-    
-    -- TOMBOL CLOSE
-    local CloseButton = Instance.new("TextButton")
-    CloseButton.Size = UDim2.new(0, 20, 0, 20)
-    CloseButton.Position = UDim2.new(1, -24, 0, 2)
-    CloseButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-    CloseButton.BackgroundTransparency = 0.3
-    CloseButton.Text = "X"
-    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    CloseButton.TextSize = 10
-    CloseButton.Font = Enum.Font.GothamBold
-    CloseButton.BorderSizePixel = 0
-    CloseButton.Parent = MainFrame
-    
-    -- ====== FUNGSI TOMBOL ======
-    local optimizeActive = false
-    
-    OptimizeButton.MouseButton1Click:Connect(function()
-        optimizeActive = not optimizeActive
-        if optimizeActive then
-            -- JALANKAN OPTIMASI
-            limparMapa()
-            ApplyResolution(resolutionValue)
-            OptimizeButton.Text = "OPTIMIZE OFF"
-            OptimizeButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-            ResStatus.Text = "🟢 RES: " .. resolutionValue
-            ResStatus.TextColor3 = Color3.fromRGB(0, 255, 0)
-            StarterGui:SetCore("SendNotification", {
-                Title = "✅ VLEXHUB",
-                Text = "OPTIMASI AKTIF! FPS NAIK!",
-                Duration = 3,
-                Button1 = "OK"
-            })
-        else
-            -- MATIKAN OPTIMASI
-            RemoveResolution()
-            OptimizeButton.Text = "OPTIMIZE ON"
-            OptimizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            ResStatus.Text = "🔴 RES: NORMAL"
-            ResStatus.TextColor3 = Color3.fromRGB(255, 0, 0)
-            StarterGui:SetCore("SendNotification", {
-                Title = "⛔ VLEXHUB",
-                Text = "OPTIMASI MATI!",
-                Duration = 3,
-                Button1 = "OK"
-            })
-        end
-    end)
-    
-    CloseButton.MouseButton1Click:Connect(function()
-        ScreenGui:Destroy()
-        RemoveResolution()
-    end)
-    
-    -- ====== UPDATE FPS ======
-    local fps = 0
-    local lastTime = tick()
-    local frameCount = 0
-    
+    warn("Mapa otimizado: Texturas removidas.")
+end
+
+-- 2. PARTE: RESOLUÇÃO DE TELA (CAMERA TRICK)
+if getgenv().gg_scripters == nil then
     RunService.RenderStepped:Connect(function()
-        frameCount = frameCount + 1
-        local currentTime = tick()
-        if currentTime - lastTime >= 0.5 then
-            fps = math.floor(frameCount / (currentTime - lastTime))
-            frameCount = 0
-            lastTime = currentTime
-            FPSLabel.Text = fps .. " FPS"
-            if fps >= 60 then
-                FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-            elseif fps >= 30 then
-                FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-            else
-                FPSLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-            end
-        end
-    end)
-    
-    -- ====== LOOP RESOLUSI ======
-    RunService.RenderStepped:Connect(function()
-        if resolutionActive then
-            -- Terapkan matriks skala ke CFrame kamera
-            Camera.CFrame = Camera.CFrame * CFrame.new(0, 0, 0, 1, 0, 0, 0, resolutionValue, 0, 0, 0, 1)
-        end
-    end)
-    
-    -- NOTIFIKASI
-    StarterGui:SetCore("SendNotification", {
-        Title = "✅ VLEXHUB",
-        Text = "MONITOR FPS + OPTIMASI AKTIF!",
-        Duration = 3,
-        Button1 = "OK"
-    })
-    
-    print("✅ UI VLEXHUB FPS + OPTIMASI BERHASIL!")
-    return true
-end
-
--- =====================
--- EKSEKUSI
--- =====================
-local success = false
-
-pcall(function()
-    success = CreateUI()
-end)
-
-if not success or not player.PlayerGui:FindFirstChild("VLEXHUB_UI") then
-    print("⚠️ GAGAL, COBA LAGI...")
-    task.wait(1)
-    pcall(function()
-        success = CreateUI()
+        -- Aplica a matriz de escala na CFrame da câmera
+        Camera.CFrame = Camera.CFrame * CFrame.new(0, 0, 0, 1, 0, 0, 0, getgenv().Resolution[".gg/scripters"], 0, 0, 0, 1)
     end)
 end
 
-if not success or not player.PlayerGui:FindFirstChild("VLEXHUB_UI") then
-    print("⚠️ UI GAGAL TOTAL! PAKE NOTIFIKASI...")
-    StarterGui:SetCore("SendNotification", {
-        Title = "⚠️ VLEXHUB",
-        Text = "FPS MONITOR GAGAL TAMPIL!",
-        Duration = 5,
-        Button1 = "OK"
-    })
-    -- JALANKAN OPTIMASI OTOMATIS
-    limparMapa()
-    ApplyResolution(0.65)
-end
-
--- ====== SET GLOBAL ======
+-- 3. EXECUÇÃO
+limparMapa()
 getgenv().gg_scripters = "Aori0001"
-
-print("🔥 VLEXHUB FPS MONITOR + OPTIMASI SELESAI!")
