@@ -1,131 +1,80 @@
 -- =============================================
--- SCRIPT FPS BOOST + LAYAR GEPENG + ANTI BAND
--- MODE DARURAT KALO UI PERTAMA GAGAL
+-- SCRIPT MONITOR FPS + OPTIMASI RESOLUSI
+-- + UI VLEXHUB
 -- =============================================
-print("🔥 VLEXHUB FPS BOOST + ANTI BAND AKTIF!")
+
+print("🔥 VLEXHUB FPS MONITOR + OPTIMASI AKTIF!")
 
 repeat task.wait() until game:IsLoaded()
 repeat task.wait() until game:GetService("Players").LocalPlayer
 task.wait(2)
 
 local player = game:GetService("Players").LocalPlayer
-local Lighting = game:GetService("Lighting")
 local StarterGui = game:GetService("StarterGui")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
-local Camera = game:GetService("Workspace").CurrentCamera
+local Camera = workspace.CurrentCamera
+local Lighting = game:GetService("Lighting")
 
 -- =====================
--- VARIABEL
+-- KONFIGURASI GLOBAL
 -- =====================
-local masterEnabled = false
-local flatScreenEnabled = false
-local originalFOV = Camera.FieldOfView
-local UI_MODE = "NORMAL" -- NORMAL / DARURAT
+getgenv().Resolution = {
+    [".gg/scripters"] = 0.65 -- Semakin kecil, semakin tinggi FPS (tapi gambar makin pecah)
+}
 
 -- =====================
--- FUNGSI LAYAR GEPENG
+-- FUNGSI OPTIMASI MAP
 -- =====================
-local function ApplyFlatScreen()
-    Camera.FieldOfView = 1
-    print("🔥 LAYAR GEPENG AKTIF!")
-end
-
-local function RemoveFlatScreen()
-    Camera.FieldOfView = originalFOV or 70
-    print("⛔ LAYAR GEPENG DIMATIKAN!")
-end
-
--- =====================
--- FUNGSI FPS BOOST
--- =====================
-local function ApplyBoost()
-    settings().Rendering.QualityLevel = 1
-    settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04
+local function limparMapa()
+    for _, objeto in pairs(game.Workspace:GetDescendants()) do
+        pcall(function()
+            if objeto:IsA("Decal") or objeto:IsA("Texture") then
+                objeto:Destroy()
+            elseif objeto:IsA("BasePart") or objeto:IsA("MeshPart") or objeto:IsA("UnionOperation") then
+                objeto.Material = Enum.Material.SmoothPlastic
+                objeto.Reflectance = 0
+                if objeto:IsA("MeshPart") then
+                    objeto.TextureID = ""
+                end
+            end
+            if objeto:IsA("ParticleEmitter") or objeto:IsA("Trail") then
+                objeto.Enabled = false
+            end
+            if objeto:IsA("BloomEffect") or objeto:IsA("BlurEffect") or objeto:IsA("ColorCorrectionEffect") then
+                objeto.Enabled = false
+            end
+        end)
+    end
+    
+    -- MATIKIN SHADOW
     Lighting.GlobalShadows = false
     Lighting.ShadowSoftness = 0
     Lighting.FogEnd = 9e9
-    Lighting.FogStart = 9e9
-    Lighting.Brightness = 2
-    Lighting.Atmosphere = nil
     
-    local terrain = Workspace:FindFirstChildOfClass("Terrain")
-    if terrain then
-        terrain.WaterWaveSize = 0
-        terrain.WaterWaveSpeed = 0
-        terrain.WaterReflectance = 0
-        terrain.WaterTransparency = 1
-    end
-    
-    for _, v in pairs(Workspace:GetDescendants()) do
-        pcall(function()
-            if v:IsA("BloomEffect") or v:IsA("BlurEffect") or v:IsA("ColorCorrectionEffect") or v:IsA("SunRaysEffect") then
-                v.Enabled = false
-                v:Destroy()
-            end
-            if v:IsA("ParticleEmitter") or v:IsA("Trail") or v:IsA("Smoke") or v:IsA("Fire") or v:IsA("Sparkles") then
-                v.Enabled = false
-                v:Destroy()
-            end
-            if v:IsA("Atmosphere") then
-                v:Destroy()
-            end
-            if v:IsA("Decal") or v:IsA("Texture") then
-                v.Transparency = 1
-            end
-        end)
-    end
-    
-    pcall(function()
-        if setfpscap then setfpscap(120) end
-    end)
-    
-    print("🔥 FPS BOOST AKTIF!")
-end
-
-local function RemoveBoost()
-    settings().Rendering.QualityLevel = 10
-    settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
-    Lighting.GlobalShadows = true
-    Lighting.ShadowSoftness = 0.5
-    Lighting.FogEnd = 100000
-    Lighting.FogStart = 0
-    Lighting.Brightness = 1
-    
-    local terrain = Workspace:FindFirstChildOfClass("Terrain")
-    if terrain then
-        terrain.WaterWaveSize = 10
-        terrain.WaterWaveSpeed = 5
-        terrain.WaterReflectance = 0.5
-        terrain.WaterTransparency = 0.5
-    end
-    
-    pcall(function()
-        if setfpscap then setfpscap(60) end
-    end)
-    
-    print("⛔ BOOST DIMATIKAN!")
+    warn("🔥 Mapa otimizado: Texturas removidas!")
 end
 
 -- =====================
--- ANTI BAND
+-- FUNGSI OPTIMASI RESOLUSI
 -- =====================
-local function AntiBand()
-    pcall(function()
-        getgenv().VLEXHUB = nil
-        getgenv().masterEnabled = nil
-        getgenv().flatScreenEnabled = nil
-    end)
-    print("🔥 ANTI BAND AKTIF!")
+local resolutionActive = false
+local resolutionValue = 0.65
+
+local function ApplyResolution(value)
+    resolutionValue = value or 0.65
+    resolutionActive = true
+    print("🔥 RESOLUSI DIOPTIMASI: " .. resolutionValue)
+end
+
+local function RemoveResolution()
+    resolutionActive = false
+    print("⛔ RESOLUSI DINORMALISASI!")
 end
 
 -- =====================
--- UI DARURAT (KALO GAGAL)
+-- BUAT UI MONITOR FPS + OPTIMASI
 -- =====================
-local function CreateEmergencyUI()
-    print("⚠️ MODE DARURAT AKTIF!")
-    UI_MODE = "DARURAT"
-    
+local function CreateUI()
     -- HAPUS UI LAMA
     for _, v in pairs(player.PlayerGui:GetChildren()) do
         if v.Name == "VLEXHUB_UI" then
@@ -137,350 +86,113 @@ local function CreateEmergencyUI()
     ScreenGui.Name = "VLEXHUB_UI"
     ScreenGui.Parent = player.PlayerGui
     ScreenGui.ResetOnSpawn = false
-    ScreenGui.Enabled = true
     
-    -- FRAME UTAMA (BESAR BIAR MUDAH DIKLIK)
+    -- FRAME UTAMA
     local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 280, 0, 220)
-    MainFrame.Position = UDim2.new(0.5, -140, 0.5, -110)
+    MainFrame.Size = UDim2.new(0, 200, 0, 150)
+    MainFrame.Position = UDim2.new(0, 10, 0, 10)
     MainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    MainFrame.BackgroundTransparency = 0.1
-    MainFrame.BorderSizePixel = 3
-    MainFrame.BorderColor3 = Color3.fromRGB(255, 0, 0) -- MERAH TANDA DARURAT
-    MainFrame.Active = true
-    MainFrame.Draggable = true
-    MainFrame.Visible = true
-    MainFrame.Parent = ScreenGui
-    
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 10)
-    Corner.Parent = MainFrame
-    
-    -- JUDUL DARURAT
-    local TitleLabel = Instance.new("TextLabel")
-    TitleLabel.Size = UDim2.new(1, 0, 0, 35)
-    TitleLabel.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-    TitleLabel.BackgroundTransparency = 0.5
-    TitleLabel.Text = "⚠️ VLEXHUB DARURAT ⚠️"
-    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TitleLabel.TextSize = 14
-    TitleLabel.Font = Enum.Font.GothamBold
-    TitleLabel.Parent = MainFrame
-    
-    -- STATUS DARURAT
-    local StatusLabel = Instance.new("TextLabel")
-    StatusLabel.Size = UDim2.new(1, 0, 0, 25)
-    StatusLabel.Position = UDim2.new(0, 0, 0, 40)
-    StatusLabel.BackgroundTransparency = 1
-    StatusLabel.Text = "🔴 MODE DARURAT AKTIF!"
-    StatusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-    StatusLabel.TextSize = 13
-    StatusLabel.Font = Enum.Font.GothamBold
-    StatusLabel.Parent = MainFrame
-    
-    -- FPS COUNTER
-    local FPSLabel = Instance.new("TextLabel")
-    FPSLabel.Size = UDim2.new(1, 0, 0, 25)
-    FPSLabel.Position = UDim2.new(0, 0, 0, 70)
-    FPSLabel.BackgroundTransparency = 1
-    FPSLabel.Text = "FPS: 0"
-    FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-    FPSLabel.TextSize = 14
-    FPSLabel.Font = Enum.Font.GothamBold
-    FPSLabel.Parent = MainFrame
-    
-    -- TOMBOL BOOST
-    local BoostButton = Instance.new("TextButton")
-    BoostButton.Size = UDim2.new(0, 110, 0, 32)
-    BoostButton.Position = UDim2.new(0.5, -55, 0, 105)
-    BoostButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    BoostButton.Text = "🚀 BOOST ON"
-    BoostButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    BoostButton.TextSize = 12
-    BoostButton.Font = Enum.Font.GothamBold
-    BoostButton.BorderSizePixel = 0
-    BoostButton.Parent = MainFrame
-    
-    local BoostCorner = Instance.new("UICorner")
-    BoostCorner.CornerRadius = UDim.new(0, 8)
-    BoostCorner.Parent = BoostButton
-    
-    -- TOMBOL GEPENG
-    local FlatButton = Instance.new("TextButton")
-    FlatButton.Size = UDim2.new(0, 110, 0, 32)
-    FlatButton.Position = UDim2.new(0.5, -55, 0, 145)
-    FlatButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    FlatButton.Text = "📐 GEPENG OFF"
-    FlatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    FlatButton.TextSize = 12
-    FlatButton.Font = Enum.Font.GothamBold
-    FlatButton.BorderSizePixel = 0
-    FlatButton.Parent = MainFrame
-    
-    local FlatCorner = Instance.new("UICorner")
-    FlatCorner.CornerRadius = UDim.new(0, 8)
-    FlatCorner.Parent = FlatButton
-    
-    -- TOMBOL CLOSE
-    local CloseButton = Instance.new("TextButton")
-    CloseButton.Size = UDim2.new(0, 30, 0, 30)
-    CloseButton.Position = UDim2.new(1, -35, 0, 5)
-    CloseButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-    CloseButton.BackgroundTransparency = 0.5
-    CloseButton.Text = "X"
-    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    CloseButton.TextSize = 14
-    CloseButton.Font = Enum.Font.GothamBold
-    CloseButton.BorderSizePixel = 0
-    CloseButton.Parent = MainFrame
-    
-    -- ====== FUNGSI TOMBOL ======
-    BoostButton.MouseButton1Click:Connect(function()
-        masterEnabled = not masterEnabled
-        if masterEnabled then
-            ApplyBoost()
-            BoostButton.Text = "🚀 BOOST OFF"
-            BoostButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-            FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-            StarterGui:SetCore("SendNotification", {
-                Title = "VLEXHUB DARURAT",
-                Text = "FPS BOOST AKTIF!",
-                Duration = 3,
-                Button1 = "OK"
-            })
-        else
-            RemoveBoost()
-            BoostButton.Text = "🚀 BOOST ON"
-            BoostButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-            StarterGui:SetCore("SendNotification", {
-                Title = "VLEXHUB DARURAT",
-                Text = "FPS BOOST DIMATIKAN!",
-                Duration = 3,
-                Button1 = "OK"
-            })
-        end
-    end)
-    
-    FlatButton.MouseButton1Click:Connect(function()
-        flatScreenEnabled = not flatScreenEnabled
-        if flatScreenEnabled then
-            ApplyFlatScreen()
-            FlatButton.Text = "📐 GEPENG ON"
-            FlatButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-            StarterGui:SetCore("SendNotification", {
-                Title = "VLEXHUB DARURAT",
-                Text = "LAYAR GEPENG AKTIF!",
-                Duration = 3,
-                Button1 = "OK"
-            })
-        else
-            RemoveFlatScreen()
-            FlatButton.Text = "📐 GEPENG OFF"
-            FlatButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            StarterGui:SetCore("SendNotification", {
-                Title = "VLEXHUB DARURAT",
-                Text = "LAYAR GEPENG DIMATIKAN!",
-                Duration = 3,
-                Button1 = "OK"
-            })
-        end
-    end)
-    
-    CloseButton.MouseButton1Click:Connect(function()
-        ScreenGui:Destroy()
-        RemoveBoost()
-        RemoveFlatScreen()
-    end)
-    
-    -- ====== UPDATE FPS ======
-    local function UpdateFPS()
-        local fps = 0
-        local lastTime = tick()
-        local frameCount = 0
-        
-        RunService.RenderStepped:Connect(function()
-            frameCount = frameCount + 1
-            local currentTime = tick()
-            if currentTime - lastTime >= 0.5 then
-                fps = math.floor(frameCount / (currentTime - lastTime))
-                frameCount = 0
-                lastTime = currentTime
-                FPSLabel.Text = "FPS: " .. fps
-                if fps >= 60 then
-                    FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-                elseif fps >= 30 then
-                    FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-                else
-                    FPSLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-                end
-            end
-        end)
-    end
-    
-    UpdateFPS()
-    
-    StarterGui:SetCore("SendNotification", {
-        Title = "⚠️ VLEXHUB DARURAT",
-        Text = "MODE DARURAT AKTIF! SEMUA FITUR TETAP JALAN!",
-        Duration = 5,
-        Button1 = "OK"
-    })
-    
-    print("✅ UI DARURAT VLEXHUB BERHASIL!")
-    return true
-end
-
--- =====================
--- UI NORMAL
--- =====================
-local function CreateNormalUI()
-    print("🟢 MODE NORMAL AKTIF!")
-    UI_MODE = "NORMAL"
-    
-    -- HAPUS UI LAMA
-    for _, v in pairs(player.PlayerGui:GetChildren()) do
-        if v.Name == "VLEXHUB_UI" then
-            v:Destroy()
-        end
-    end
-    
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "VLEXHUB_UI"
-    ScreenGui.Parent = player.PlayerGui
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.Enabled = true
-    
-    -- MAIN FRAME
-    local MainFrame = Instance.new("Frame")
-    MainFrame.Size = UDim2.new(0, 240, 0, 200)
-    MainFrame.Position = UDim2.new(0.5, -120, 0.5, -100)
-    MainFrame.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-    MainFrame.BackgroundTransparency = 0.1
+    MainFrame.BackgroundTransparency = 0.2
     MainFrame.BorderSizePixel = 2
     MainFrame.BorderColor3 = Color3.fromRGB(255, 255, 255)
     MainFrame.Active = true
     MainFrame.Draggable = true
-    MainFrame.Visible = true
     MainFrame.Parent = ScreenGui
     
     local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 10)
+    Corner.CornerRadius = UDim.new(0, 8)
     Corner.Parent = MainFrame
     
     -- JUDUL
     local TitleLabel = Instance.new("TextLabel")
-    TitleLabel.Size = UDim2.new(1, 0, 0, 30)
+    TitleLabel.Size = UDim2.new(1, 0, 0, 22)
     TitleLabel.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    TitleLabel.Text = "VLEXHUB FPS"
+    TitleLabel.Text = "⚡ VLEXHUB FPS"
     TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    TitleLabel.TextSize = 14
+    TitleLabel.TextSize = 10
     TitleLabel.Font = Enum.Font.GothamBold
     TitleLabel.Parent = MainFrame
     
-    -- STATUS FPS
+    -- FPS COUNTER
     local FPSLabel = Instance.new("TextLabel")
-    FPSLabel.Size = UDim2.new(1, 0, 0, 25)
-    FPSLabel.Position = UDim2.new(0, 0, 0, 35)
+    FPSLabel.Size = UDim2.new(1, 0, 0, 35)
+    FPSLabel.Position = UDim2.new(0, 0, 0, 24)
     FPSLabel.BackgroundTransparency = 1
-    FPSLabel.Text = "FPS: 0"
-    FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-    FPSLabel.TextSize = 14
-    FPSLabel.Font = Enum.Font.GothamBold
+    FPSLabel.Text = "0 FPS"
+    FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+    FPSLabel.TextSize = 24
+    FPSLabel.Font = Enum.Font.GothamBlack
     FPSLabel.Parent = MainFrame
     
-    -- TOMBOL BOOST
-    local BoostButton = Instance.new("TextButton")
-    BoostButton.Size = UDim2.new(0, 100, 0, 30)
-    BoostButton.Position = UDim2.new(0.5, -50, 0, 70)
-    BoostButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    BoostButton.Text = "BOOST ON"
-    BoostButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    BoostButton.TextSize = 12
-    BoostButton.Font = Enum.Font.GothamBold
-    BoostButton.BorderSizePixel = 0
-    BoostButton.Parent = MainFrame
+    -- TOMBOL OPTIMASI
+    local OptimizeButton = Instance.new("TextButton")
+    OptimizeButton.Size = UDim2.new(0, 120, 0, 28)
+    OptimizeButton.Position = UDim2.new(0.5, -60, 0, 68)
+    OptimizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    OptimizeButton.Text = "OPTIMIZE ON"
+    OptimizeButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    OptimizeButton.TextSize = 11
+    OptimizeButton.Font = Enum.Font.GothamBold
+    OptimizeButton.BorderSizePixel = 0
+    OptimizeButton.Parent = MainFrame
     
-    local BoostCorner = Instance.new("UICorner")
-    BoostCorner.CornerRadius = UDim.new(0, 8)
-    BoostCorner.Parent = BoostButton
+    local OptimizeCorner = Instance.new("UICorner")
+    OptimizeCorner.CornerRadius = UDim.new(0, 6)
+    OptimizeCorner.Parent = OptimizeButton
     
-    -- TOMBOL LAYAR GEPENG
-    local FlatButton = Instance.new("TextButton")
-    FlatButton.Size = UDim2.new(0, 100, 0, 30)
-    FlatButton.Position = UDim2.new(0.5, -50, 0, 110)
-    FlatButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    FlatButton.Text = "GEPENG OFF"
-    FlatButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    FlatButton.TextSize = 12
-    FlatButton.Font = Enum.Font.GothamBold
-    FlatButton.BorderSizePixel = 0
-    FlatButton.Parent = MainFrame
-    
-    local FlatCorner = Instance.new("UICorner")
-    FlatCorner.CornerRadius = UDim.new(0, 8)
-    FlatCorner.Parent = FlatButton
+    -- STATUS RESOLUSI
+    local ResStatus = Instance.new("TextLabel")
+    ResStatus.Size = UDim2.new(1, 0, 0, 16)
+    ResStatus.Position = UDim2.new(0, 0, 0, 105)
+    ResStatus.BackgroundTransparency = 1
+    ResStatus.Text = "🔴 RES: NORMAL"
+    ResStatus.TextColor3 = Color3.fromRGB(255, 0, 0)
+    ResStatus.TextSize = 9
+    ResStatus.Font = Enum.Font.Gotham
+    ResStatus.Parent = MainFrame
     
     -- TOMBOL CLOSE
     local CloseButton = Instance.new("TextButton")
-    CloseButton.Size = UDim2.new(0, 25, 0, 25)
-    CloseButton.Position = UDim2.new(1, -30, 0, 3)
+    CloseButton.Size = UDim2.new(0, 20, 0, 20)
+    CloseButton.Position = UDim2.new(1, -24, 0, 2)
     CloseButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-    CloseButton.BackgroundTransparency = 0.5
+    CloseButton.BackgroundTransparency = 0.3
     CloseButton.Text = "X"
     CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    CloseButton.TextSize = 12
+    CloseButton.TextSize = 10
     CloseButton.Font = Enum.Font.GothamBold
     CloseButton.BorderSizePixel = 0
     CloseButton.Parent = MainFrame
     
     -- ====== FUNGSI TOMBOL ======
-    BoostButton.MouseButton1Click:Connect(function()
-        masterEnabled = not masterEnabled
-        if masterEnabled then
-            ApplyBoost()
-            BoostButton.Text = "BOOST OFF"
-            BoostButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-            FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-            StarterGui:SetCore("SendNotification", {
-                Title = "VLEXHUB",
-                Text = "FPS BOOST AKTIF!",
-                Duration = 3,
-                Button1 = "OK"
-            })
-        else
-            RemoveBoost()
-            BoostButton.Text = "BOOST ON"
-            BoostButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-            FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-            StarterGui:SetCore("SendNotification", {
-                Title = "VLEXHUB",
-                Text = "FPS BOOST DIMATIKAN!",
-                Duration = 3,
-                Button1 = "OK"
-            })
-        end
-    end)
+    local optimizeActive = false
     
-    FlatButton.MouseButton1Click:Connect(function()
-        flatScreenEnabled = not flatScreenEnabled
-        if flatScreenEnabled then
-            ApplyFlatScreen()
-            FlatButton.Text = "GEPENG ON"
-            FlatButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    OptimizeButton.MouseButton1Click:Connect(function()
+        optimizeActive = not optimizeActive
+        if optimizeActive then
+            -- JALANKAN OPTIMASI
+            limparMapa()
+            ApplyResolution(resolutionValue)
+            OptimizeButton.Text = "OPTIMIZE OFF"
+            OptimizeButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+            ResStatus.Text = "🟢 RES: " .. resolutionValue
+            ResStatus.TextColor3 = Color3.fromRGB(0, 255, 0)
             StarterGui:SetCore("SendNotification", {
-                Title = "VLEXHUB",
-                Text = "LAYAR GEPENG AKTIF!",
+                Title = "✅ VLEXHUB",
+                Text = "OPTIMASI AKTIF! FPS NAIK!",
                 Duration = 3,
                 Button1 = "OK"
             })
         else
-            RemoveFlatScreen()
-            FlatButton.Text = "GEPENG OFF"
-            FlatButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            -- MATIKAN OPTIMASI
+            RemoveResolution()
+            OptimizeButton.Text = "OPTIMIZE ON"
+            OptimizeButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+            ResStatus.Text = "🔴 RES: NORMAL"
+            ResStatus.TextColor3 = Color3.fromRGB(255, 0, 0)
             StarterGui:SetCore("SendNotification", {
-                Title = "VLEXHUB",
-                Text = "LAYAR GEPENG DIMATIKAN!",
+                Title = "⛔ VLEXHUB",
+                Text = "OPTIMASI MATI!",
                 Duration = 3,
                 Button1 = "OK"
             })
@@ -489,96 +201,83 @@ local function CreateNormalUI()
     
     CloseButton.MouseButton1Click:Connect(function()
         ScreenGui:Destroy()
-        RemoveBoost()
-        RemoveFlatScreen()
+        RemoveResolution()
     end)
     
     -- ====== UPDATE FPS ======
-    local function UpdateFPS()
-        local fps = 0
-        local lastTime = tick()
-        local frameCount = 0
-        
-        RunService.RenderStepped:Connect(function()
-            frameCount = frameCount + 1
-            local currentTime = tick()
-            if currentTime - lastTime >= 0.5 then
-                fps = math.floor(frameCount / (currentTime - lastTime))
-                frameCount = 0
-                lastTime = currentTime
-                FPSLabel.Text = "FPS: " .. fps
-                if fps >= 60 then
-                    FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-                elseif fps >= 30 then
-                    FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
-                else
-                    FPSLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
-                end
+    local fps = 0
+    local lastTime = tick()
+    local frameCount = 0
+    
+    RunService.RenderStepped:Connect(function()
+        frameCount = frameCount + 1
+        local currentTime = tick()
+        if currentTime - lastTime >= 0.5 then
+            fps = math.floor(frameCount / (currentTime - lastTime))
+            frameCount = 0
+            lastTime = currentTime
+            FPSLabel.Text = fps .. " FPS"
+            if fps >= 60 then
+                FPSLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+            elseif fps >= 30 then
+                FPSLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+            else
+                FPSLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
             end
-        end)
-    end
+        end
+    end)
     
-    UpdateFPS()
+    -- ====== LOOP RESOLUSI ======
+    RunService.RenderStepped:Connect(function()
+        if resolutionActive then
+            -- Terapkan matriks skala ke CFrame kamera
+            Camera.CFrame = Camera.CFrame * CFrame.new(0, 0, 0, 1, 0, 0, 0, resolutionValue, 0, 0, 0, 1)
+        end
+    end)
     
+    -- NOTIFIKASI
     StarterGui:SetCore("SendNotification", {
-        Title = "VLEXHUB",
-        Text = "FPS BOOST + GEPENG + ANTI BAND AKTIF!",
-        Duration = 5,
+        Title = "✅ VLEXHUB",
+        Text = "MONITOR FPS + OPTIMASI AKTIF!",
+        Duration = 3,
         Button1 = "OK"
     })
     
-    print("✅ UI NORMAL VLEXHUB BERHASIL!")
+    print("✅ UI VLEXHUB FPS + OPTIMASI BERHASIL!")
     return true
 end
 
 -- =====================
--- EKSEKUSI UI (DENGAN MODE DARURAT)
+-- EKSEKUSI
 -- =====================
 local success = false
 
--- COBA UI NORMAL
 pcall(function()
-    success = CreateNormalUI()
+    success = CreateUI()
 end)
 
--- KALO GAGAL, COBA UI DARURAT
 if not success or not player.PlayerGui:FindFirstChild("VLEXHUB_UI") then
-    print("⚠️ UI NORMAL GAGAL! AKTIFKAN MODE DARURAT...")
+    print("⚠️ GAGAL, COBA LAGI...")
     task.wait(1)
-    
-    -- HAPUS UI LAMA KALO ADA
-    for _, v in pairs(player.PlayerGui:GetChildren()) do
-        if v.Name == "VLEXHUB_UI" then
-            v:Destroy()
-        end
-    end
-    
     pcall(function()
-        success = CreateEmergencyUI()
+        success = CreateUI()
     end)
 end
 
--- KALO MASIH GAGAL, UI PALING SEDERHANA (LEWAT NOTIF)
 if not success or not player.PlayerGui:FindFirstChild("VLEXHUB_UI") then
-    print("⚠️ UI DARURAT JUGA GAGAL! PAKE NOTIFIKASI...")
-    
-    -- TETAP JALANKAN FUNGSI VIA NOTIF
+    print("⚠️ UI GAGAL TOTAL! PAKE NOTIFIKASI...")
     StarterGui:SetCore("SendNotification", {
         Title = "⚠️ VLEXHUB",
-        Text = "UI GAGAL TAMPIL! TAPI FITUR TETAP JALAN!",
-        Duration = 10,
+        Text = "FPS MONITOR GAGAL TAMPIL!",
+        Duration = 5,
         Button1 = "OK"
     })
-    
-    -- JALANKAN BOOST OTOMATIS (BIAR TETAP BERGUNA)
-    ApplyBoost()
-    ApplyFlatScreen()
-    
-    print("✅ MODE TANPA UI AKTIF!")
+    -- JALANKAN OPTIMASI OTOMATIS
+    limparMapa()
+    ApplyResolution(0.65)
 end
 
--- ====== ANTI BAND ======
-AntiBand()
+-- ====== SET GLOBAL ======
+getgenv().gg_scripters = "Aori0001"
 
-print("🔥 VLEXHUB FPS BOOST + GEPENG + ANTI BAND SELESAI!")
-print("🔴 MODE UI: " .. UI_MODE)
+print("🔥 VLEXHUB FPS MONITOR + OPTIMASI SELESAI!")
